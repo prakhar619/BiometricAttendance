@@ -356,6 +356,7 @@ int getFingerprintEnroll(uint8_t id)
     Serial.println("Unknown error");
     return p;
   }
+  Serial.println("Successful Enroll");
 }
 
 int readnumber(void)
@@ -371,6 +372,8 @@ int readnumber(void)
 
 void Get_User_Name(int finger_id)
 {
+  int myTimeout = 5000;
+  Serial.setTimeout(myTimeout);
   while (!Serial.available());
   userTable[finger_id].username = Serial.readString();
 }
@@ -379,6 +382,8 @@ void Get_User_Name(int finger_id)
 void Enter_User(int uid)
 {
   present[uid] = 1;
+  Serial.print("Entering user:");
+  Serial.println(userTable[uid].username);
   //LCD_Enter_User(uid);
   DateTime Time_Enter = rtc.now();
   userTable[uid].Enter_Hour = Time_Enter.hour();
@@ -393,7 +398,8 @@ void Exit_User(int uid)
 {
   int work_time = 0, wh = 0, wm = 0;
   present[uid] = 0;
-
+  Serial.print("Exitting user:");
+  Serial.println(userTable[uid].username);
   DateTime Time_Exit = rtc.now();
 
   work_time = (Time_Exit.hour() * 60 + Time_Exit.minute()) - ((userTable[uid].Enter_Hour * 60) + userTable[uid].Enter_Min);
@@ -401,11 +407,7 @@ void Exit_User(int uid)
   wm = work_time % 60;
   userTable[uid].WT = String(wh) + ":" + String(wm);
 
-  Serial.print(Time_Exit.hour());
-  Serial.print(":");
-  Serial.println(Time_Exit.minute());
-
-  String Final = Make_String(uid, Time_Exit.day(), Time_Exit.month(), Time_Exit.year(), userTable[uid].Enter_Hour , userTable[uid].Enter_Min, Time_Exit.hour(), Time_Exit.minute(),userTable[uid].WT);
+  String Final = Make_String(uid, Time_Exit);
   Serial.println(Final);
 
   Writ_to_Main_File(Final, uid);
@@ -423,17 +425,17 @@ void Exit_User(int uid)
   //LCD_Main_Menu();
 }
 
-String Make_String(int ID, int da, int mon, int ye, int hin, int minut, int hot, int mot, String wt)
+String Make_String(int ID, DateTime CurrentDate)
 {
-  String Final =  String(da) + "/" + String(mon) + "/" + String(ye);
+  String Final =  String(CurrentDate.day()) + "/" + String(CurrentDate.month()) + "/" + String(CurrentDate.year());
   Final += ",";
   Final += userTable[ID].username;
   Final += ",";
-  Final += String(hin) + ":" + String(minut);
+  Final += String(userTable[ID].Enter_Hour) + ":" + String(userTable[ID].Enter_Min);
   Final += ",";
-  Final += String(hot) + ":" + String(mot);
+  Final += String(CurrentDate.hour()) + ":" + String(CurrentDate.minute());
   Final += ",";
-  Final += wt;
+  Final += userTable[ID].WT;
   return Final;
 }
 
@@ -469,15 +471,6 @@ void loop() {
 
   now = rtc.now();
   
-  if (now.minute() != min_old) {
-   
-    Serial.print("   "); 
-    n_watch = String(now.hour()) + ":" + String(now.minute());
-  
-    Serial.print(n_watch); 
-    min_old = now.minute();
-  }
-
   Finger_ID = getFingerprintIDez();
 
   if (Finger_ID < 127 && Finger_ID > 0) {
